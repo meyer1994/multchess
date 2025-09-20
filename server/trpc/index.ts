@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server'
 import { Chess } from 'chess.js'
-import { asc, desc, eq, sql } from 'drizzle-orm'
+import { desc, eq, sql } from 'drizzle-orm'
 import OpenAI from 'openai'
 import { zodResponseFormat } from 'openai/helpers/zod.mjs'
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions.mjs'
@@ -65,7 +65,9 @@ const play = async (model: string, move: MoveEvent) => {
     },
   ]
 
-  const schema = z.object({ move: z.string() })
+  const schema = z.object({
+    move: z.string().describe(`One of ${game.moves()?.join(', ')}`),
+  })
 
   const response = await pRetry(async () => await openai.chat.completions.parse({
     model,
@@ -99,21 +101,28 @@ export const appRouter = createTRPCRouter({
       .input(z.object({ gameId: z.string() }))
       .query(async ({ input }) => {
         logger.info({ input }, 'get game')
+
         const db = useDrizzle()
         const game = await db.query.TGames.findFirst({
           where: eq(TGames.id, input.gameId),
           with: {
             moves: {
               limit: 1,
-              orderBy: [desc(TMoves.index), asc(TMoves.createdAt)],
+              orderBy: [desc(TMoves.index)],
             },
           },
         })
+
+        const isProcessing = (
+          game?.moves?.[0]?.moveGpt4oFen === null
+          || game?.moves?.[0]?.moveGpt4oMiniFen === null
+        )
+
+        const fenGpt4o = game?.moves?.[0]?.moveGpt4oFen || DEFAULT_FEN
+        const fenGpt4oMini = game?.moves?.[0]?.moveGpt4oMiniFen || DEFAULT_FEN
+
         if (!game) throw new TRPCError({ code: 'NOT_FOUND' })
-        return {
-          fenGpt4o: game.moves?.[0]?.moveGpt4oFen || DEFAULT_FEN,
-          fenGpt4oMini: game.moves?.[0]?.moveGpt4oMiniFen || DEFAULT_FEN,
-        }
+        return { fenGpt4o, fenGpt4oMini, isProcessing }
       }),
 
     move: baseProcedure
@@ -121,15 +130,15 @@ export const appRouter = createTRPCRouter({
         gameId: z.string(),
         move: z.record(z.string(), z.any()).transform(p => p as MoveEvent),
       }))
-      .mutation(async ({ input }) => {
-        logger.info({ input }, 'move')
+      .mutation(async ({ ctx, input }) => {
+        logger.info({ gameId: input.gameId }, 'move')
         const db = useDrizzle()
 
         const [total] = await db.select({ count: sql<number>`COALESCE(COUNT(*), 0)` })
           .from(TMoves)
           .where(eq(TMoves.gameId, input.gameId))
-        if (!total) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
 
+        if (!total) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
         logger.info({ total }, 'total moves')
 
         const [userMove] = await db
@@ -143,16 +152,17 @@ export const appRouter = createTRPCRouter({
           })
           .returning()
 
-        logger.info({ userMove }, 'moved')
         if (!userMove) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
 
-        setImmediate(async () => {
+        const genGpt4oMini = async () => {
           logger.info('move gpt-4o-mini')
           try {
             const db = useDrizzle()
-            const fen = await play('gpt-4o-mini', input.move)
+            const move = await play('gpt-4o-mini', input.move)
+            logger.info({ move }, 'gpt-4o-mini move')
+
             const chess = new Chess(input.move.after)
-            chess.move(fen.move)
+            chess.move(move.move, { strict: false })
             logger.info({ fen: chess.fen() }, 'gpt-4o-mini fen')
 
             await db.update(TMoves)
@@ -161,17 +171,19 @@ export const appRouter = createTRPCRouter({
               .returning()
           }
           catch (error) {
-            logger.error({ error }, 'error moving gpt-4o-mini')
+            logger.error(error)
           }
-        })
+        }
 
-        setImmediate(async () => {
+        const genGpt4o = async () => {
           logger.info('move gpt-4o')
           try {
             const db = useDrizzle()
-            const fen = await play('gpt-4o', input.move)
+            const move = await play('gpt-4o', input.move)
+            logger.info({ move }, 'gpt-4o move')
+
             const chess = new Chess(input.move.after)
-            chess.move(fen.move)
+            chess.move(move.move, { strict: false })
             logger.info({ fen: chess.fen() }, 'gpt-4o fen')
 
             await db.update(TMoves)
@@ -180,9 +192,12 @@ export const appRouter = createTRPCRouter({
               .returning()
           }
           catch (error) {
-            logger.error({ error }, 'error moving gpt-4o')
+            logger.error(error)
           }
-        })
+        }
+
+        ctx.event.waitUntil(genGpt4o())
+        ctx.event.waitUntil(genGpt4oMini())
 
         return {
           fenGpt4o: userMove.moveGpt4oFen,

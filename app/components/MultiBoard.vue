@@ -2,18 +2,30 @@
 import { TheChessboard, type BoardApi, type BoardConfig, type MoveEvent } from 'vue3-chessboard'
 import 'vue3-chessboard/style.css'
 
-const STATE = {
-  orientation: 'white',
-  fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-} as const
+const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+
+const props = defineProps<{
+  fenGpt4o?: string
+  fenGpt4oMini?: string
+  loading?: boolean
+}>()
 
 let boardGpt4o: BoardApi | null = null
 let boardGpt4oMini: BoardApi | null = null
 const onGpt4oCreated = (p: BoardApi) => boardGpt4o = p
 const onGpt4oMiniCreated = (p: BoardApi) => boardGpt4oMini = p
 
-const configGpt4o = reactive<BoardConfig>(STATE)
-const configGpt4oMini = reactive<BoardConfig>(STATE)
+const configGpt4o = reactive<BoardConfig>(props.fenGpt4o
+  ? { orientation: 'white', fen: props.fenGpt4o, viewOnly: props.loading }
+  : { orientation: 'white', fen: DEFAULT_FEN })
+const configGpt4oMini = reactive<BoardConfig>(props.fenGpt4oMini
+  ? { orientation: 'white', fen: props.fenGpt4oMini, viewOnly: props.loading }
+  : { orientation: 'white', fen: DEFAULT_FEN, viewOnly: props.loading })
+
+watch(() => props.fenGpt4o, p => configGpt4o.fen = p)
+watch(() => props.fenGpt4oMini, p => configGpt4oMini.fen = p)
+watch(() => props.loading, p => configGpt4o.viewOnly = p)
+watch(() => props.loading, p => configGpt4oMini.viewOnly = p)
 
 const emit = defineEmits<{ (e: 'move', data: MoveEvent): Promise<void> }>()
 
