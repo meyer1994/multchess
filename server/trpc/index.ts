@@ -69,17 +69,31 @@ const play = async (model: string, move: MoveEvent) => {
     move: z.string().describe(`One of ${game.moves()?.join(', ')}`),
   })
 
-  const response = await pRetry(async () => await openai.chat.completions.parse({
-    model,
-    messages,
-    response_format: zodResponseFormat(schema, 'move'),
-  }), { retries: 3 })
+  let message: string | undefined = undefined
+  for (let i = 0; i < 3; i++) {
+    const msgs = [...messages]
+    if (message) msgs.push({ role: 'user', content: message })
 
-  const parsed = response.choices[0]?.message?.parsed
-  logger.info({ parsed }, 'parsed response')
-  if (!parsed) throw new Error('Failed to parse OpenAI response')
+    const response = await pRetry(async () => await openai.chat.completions.parse({
+      model,
+      messages: msgs,
+      response_format: zodResponseFormat(schema, 'move'),
+    }), { retries: 3 })
 
-  return parsed
+    const parsed = response.choices[0]?.message?.parsed
+    if (!parsed) continue
+
+    const chess = new Chess(move.after)
+    try {
+      chess.move(parsed.move, { strict: false })
+      return chess.fen()
+    }
+    catch (error) {
+      message = String(error)
+    }
+  }
+
+  throw new Error('Failed to parse OpenAI response')
 }
 
 export const appRouter = createTRPCRouter({
@@ -154,50 +168,37 @@ export const appRouter = createTRPCRouter({
 
         if (!userMove) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
 
-        const genGpt4oMini = async () => {
+        setImmediate(async () => {
           logger.info('move gpt-4o-mini')
           try {
+            const fen = await play('gpt-4o-mini', input.move)
+            logger.info({ fen }, 'gpt-4o-mini fen')
+
             const db = useDrizzle()
-            const move = await play('gpt-4o-mini', input.move)
-            logger.info({ move }, 'gpt-4o-mini move')
-
-            const chess = new Chess(input.move.after)
-            chess.move(move.move, { strict: false })
-            logger.info({ fen: chess.fen() }, 'gpt-4o-mini fen')
-
             await db.update(TMoves)
-              .set({ moveGpt4oMiniFen: chess.fen() })
+              .set({ moveGpt4oMiniFen: fen })
               .where(eq(TMoves.id, userMove.id))
-              .returning()
           }
           catch (error) {
             logger.error(error)
           }
-        }
+        })
 
-        const genGpt4o = async () => {
+        setImmediate(async () => {
           logger.info('move gpt-4o')
           try {
+            const fen = await play('gpt-4o', input.move)
+            logger.info({ fen }, 'gpt-4o fen')
+
             const db = useDrizzle()
-            const move = await play('gpt-4o', input.move)
-            logger.info({ move }, 'gpt-4o move')
-
-            const chess = new Chess(input.move.after)
-            chess.move(move.move, { strict: false })
-            logger.info({ fen: chess.fen() }, 'gpt-4o fen')
-
             await db.update(TMoves)
-              .set({ moveGpt4oFen: chess.fen() })
+              .set({ moveGpt4oFen: fen })
               .where(eq(TMoves.id, userMove.id))
-              .returning()
           }
           catch (error) {
             logger.error(error)
           }
-        }
-
-        ctx.event.waitUntil(genGpt4o())
-        ctx.event.waitUntil(genGpt4oMini())
+        })
 
         return {
           fenGpt4o: userMove.moveGpt4oFen,
