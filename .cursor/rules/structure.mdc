@@ -1,0 +1,38 @@
+---
+alwaysApply: true
+---
+
+# Bruch Project Structure & Conventions
+
+This is a Vue 3 + Nuxt 4 + tRPC application with AI/LangChain integration for document processing.
+
+## Key Technologies
+
+- **Frontend**: Vue 3 + Nuxt 4 + Nuxt UI + VueUse
+- **Backend**: tRPC + Drizzle ORM (PostgreSQL) + H3
+- **AI**: LangChain + Langgraph + OpenAI
+- **Auth**: nuxt-auth-utils (Auth0)
+- **Payments**: Stripe
+- **Package Manager**: pnpm
+
+## Project Structure
+
+```
+├── app/                 # Frontend application (Vue/Nuxt)
+│   ├── components/      # Vue components
+│   ├── pages/           # Nuxt pages for routing
+│   └── plugins/trpc.ts  # tRPC client setup
+└── server/              # Backend application
+    ├── api/trpc/        # tRPC endpoint
+    ├── db/              # Database schema & migrations
+    ├── trpc/            # tRPC procedures
+    └── utils/           # Server utilities (files here are auto imported by Nuxt)
+```
+
+## Development Commands
+
+- `pnpm dev` - Start development server
+- `pnpm build` - Build for production
+- `pnpm typecheck` - Run TypeScript checks
+- `pnpm lint` - Check for linting errors
+- `pnpm lint:fix` - Fix linting errors automatically

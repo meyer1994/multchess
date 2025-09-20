@@ -1,0 +1,96 @@
+---
+globs: server/trpc/**/*.ts
+alwaysApply: false
+---
+
+# tRPC Route
+
+This guide shows how to create minimal tRPC routes following the project's 
+established patterns.
+
+## File Structure
+
+```
+server/trpc/
+├── index.ts     # Main router
++── [route].ts   # Route operations
+```
+
+## Basic Route Template
+
+Create a new file in `server/trpc/` following this template:
+
+```typescript
+import { z } from 'zod'
+import { TTable } from '../db/schema'
+import { useDrizzle } from '../utils/drizzle'
+import { baseProcedure, createTRPCRouter } from '../utils/trpc'
+
+export const router = createTRPCRouter({
+  list: baseProcedure
+    .input(z.object({ /* input fields */ }))
+    .query(async ({ input, ctx }) => {
+      const db = useDrizzle()
+      return await db
+        .select()
+        .from(TTable)
+        .where(/* where conditions */)
+        .orderBy(/* order by (if needed) */)
+    }),
+
+  // Mutation example - creates data  
+  create: baseProcedure
+    .input(z.object({ /* input fields */ }))
+    .mutation(async ({ input, ctx }) => {
+      const db = useDrizzle()
+      const [result] = await db
+        .insert(TTable)
+        .values({ /* map your input fields */})
+        .returning()
+      return result
+    }),
+
+  // Delete example - deletes data
+  delete: baseProcedure
+    .input(z.object({ /* input fields */ }))
+    .mutation(async ({ input, ctx }) => {
+      const db = useDrizzle()
+      const [result] = await db
+        .delete(TTable)
+        .where(/* where conditions */)
+        .returning()
+      return result
+    }),
+})
+```
+
+## Key Patterns
+
+#### Simplicity
+
+Now we don't care about catching any errors, just input validation and fetching 
+the data. So, ignore errors for now.
+
+Good example:
+
+```typescript
+baseProcedure
+  .input(z.object({ /* input fields */ }))
+  .mutation(async ({ input, ctx }) => { 
+    console.log(input)
+  })
+```
+
+Bad example:
+
+```typescript
+baseProcedure
+  .input(z.object({ /* input fields */ }))
+  .mutation(async ({ input, ctx }) => { 
+    try {
+      console.log(input)
+    } catch (error) {
+      console.error(error)
+    }
+  })
+```

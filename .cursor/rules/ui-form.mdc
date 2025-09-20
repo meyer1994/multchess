@@ -1,0 +1,50 @@
+---
+description: Nuxt UI UForm component examples with validation
+globs: *.vue,*.ts
+---
+
+# Nuxt UI UForm Component Usage
+
+The `UForm` component provides form creation with built-in validation and error handling.
+
+## Basic Example with Custom Validation
+
+```vue
+<script setup lang="ts">
+import type { FormSubmitEvent } from '@nuxt/ui'
+import z from 'zod'
+
+const schema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters long')
+})
+
+type Schema = z.infer<typeof schema>
+const emit = defineEmits<{(e: 'submit', data: Schema): Promise<void>}>()
+const state = reactive<Schema>({ email: '', password: '' })
+</script>
+
+<template>
+  <UForm
+    :schema="schema"
+    :state="state"
+    @submit="async e => await emit('submit', e.data)">
+    <UFormField label="Email" name="email">
+      <UInput v-model="state.email" />
+    </UFormField>
+
+    <UFormField label="Password" name="password">
+      <UInput v-model="state.password" type="password" />
+    </UFormField>
+
+    <UButton type="submit">Submit</UButton>
+  </UForm>
+</template>
+```
+
+## Key Points
+
+- Use `:schema` prop for Zod/Yup/Joi schema validation
+- `state` object holds form data (reactive)
+- `UFormField` wraps form inputs with labels and error display
+- `FormSubmitEvent` provides typed access to form data
