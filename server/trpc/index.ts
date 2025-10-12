@@ -1,21 +1,23 @@
-import { TRPCError } from '@trpc/server'
 import { Chess } from 'chess.js'
-import { desc, eq, sql } from 'drizzle-orm'
 import OpenAI from 'openai'
 import { zodResponseFormat } from 'openai/helpers/zod.mjs'
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions.mjs'
 import pRetry from 'p-retry'
-import type { MoveEvent } from 'vue3-chessboard'
 import { z } from 'zod'
-import { TGames, TMoves } from '../db/schema'
 
 const logger = usePino()
 
-const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+type PlayOptions = {
+  fen: string
+  move: string
+  orientation: 'white' | 'black'
+}
 
-const play = async (model: string, move: MoveEvent) => {
+const play = async (model: string, opts: PlayOptions) => {
+  logger.info({ opts }, 'play')
   const openai = new OpenAI()
-  const game = new Chess(move.after)
+
+  const game = new Chess(opts.fen)
 
   const messages: ChatCompletionMessageParam[] = [
     {
@@ -24,16 +26,9 @@ const play = async (model: string, move: MoveEvent) => {
         You are a chess player.
 
         You will receive the following board state:
-        - After: fen string of the board state after the move
-        - Before: fen string of the board state before the move
-        - Captured: the piece that is captured if any
-        - Color: the color of the player to move
-        - From: the square the piece is moving from
-        - Lan: the language of the move
-        - Piece: the piece that is moving
-        - Promotion: the promotion piece if any
-        - San: the standard algebraic notation of the move
-        - To: the square the piece is moving to
+        - Fen: fen string of the board state
+        - Moves: list of possible moves
+        - Orientation: your side (white or black)
 
         You need to return the best move for the given board state.
 
@@ -48,48 +43,47 @@ const play = async (model: string, move: MoveEvent) => {
     {
       role: 'user',
       content: `
-        After: ${move.after}
-        Before: ${move.before}
-        Captured: ${move.captured}
-        Color: ${move.color}
-        From: ${move.from}
-        Lan: ${move.lan}
-        Piece: ${move.piece}
-        To: ${move.to}
-        Promotion: ${move.promotion}
-        San: ${move.san}
-
-        Possible moves: 
-        ${game.moves().join(', ')}
+        Fen: ${opts.fen}
+        Your side: black
+        Possible moves: ${game.moves().join(', ')}
       `,
     },
   ]
 
   const schema = z.object({
-    move: z.string().describe(`One of ${game.moves()?.join(', ')}`),
+    move: z
+      .string()
+      .describe(`One of ${game.moves().join(', ')}`),
   })
 
-  let message: string | undefined = undefined
+  const doFetch = async () => await openai.chat.completions.parse({
+    model,
+    messages,
+    response_format: zodResponseFormat(schema, 'move'),
+  })
+
+  // we try 3 times to get a valid move
   for (let i = 0; i < 3; i++) {
-    const msgs = [...messages]
-    if (message) msgs.push({ role: 'user', content: message })
+    // rety api calls
+    const response = await pRetry(doFetch, { retries: 3 })
 
-    const response = await pRetry(async () => await openai.chat.completions.parse({
-      model,
-      messages: msgs,
-      response_format: zodResponseFormat(schema, 'move'),
-    }), { retries: 3 })
+    // skip if no message
+    const message = response.choices[0]?.message
+    if (!message) continue
 
-    const parsed = response.choices[0]?.message?.parsed
+    // skip if no parsed
+    const parsed = message.parsed
     if (!parsed) continue
 
-    const chess = new Chess(move.after)
+    messages.push(message)
+
     try {
-      chess.move(parsed.move, { strict: false })
-      return chess.fen()
+      game.move(parsed.move)
+      return game.fen()
     }
     catch (error) {
-      message = String(error)
+      logger.error(error)
+      messages.push({ role: 'user', content: String(error) })
     }
   }
 
@@ -101,111 +95,40 @@ export const appRouter = createTRPCRouter({
     .input(z.literal('ping'))
     .query(() => 'pong'),
 
-  game: createTRPCRouter({
-    create: baseProcedure
-      .mutation(async () => {
-        logger.info('create game')
-        const db = useDrizzle()
-        const [game] = await db.insert(TGames).values({}).returning()
-        if (!game) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-        return game
-      }),
-
-    get: baseProcedure
-      .input(z.object({ gameId: z.string() }))
-      .query(async ({ input }) => {
-        logger.info({ input }, 'get game')
-
-        const db = useDrizzle()
-        const game = await db.query.TGames.findFirst({
-          where: eq(TGames.id, input.gameId),
-          with: {
-            moves: {
-              limit: 1,
-              orderBy: [desc(TMoves.index)],
-            },
-          },
+  run: baseProcedure
+    .input(
+      z
+        .object({
+          fen: z.string(),
+          // move: z.string().optional(),
+          // orientation: z.enum(['white', 'black']).default('white'),
         })
-
-        const isProcessing = (
-          game?.moves?.[0]?.moveGpt4oFen === null
-          || game?.moves?.[0]?.moveGpt4oMiniFen === null
-        )
-
-        const fenGpt4o = game?.moves?.[0]?.moveGpt4oFen || DEFAULT_FEN
-        const fenGpt4oMini = game?.moves?.[0]?.moveGpt4oMiniFen || DEFAULT_FEN
-
-        if (!game) throw new TRPCError({ code: 'NOT_FOUND' })
-        return { fenGpt4o, fenGpt4oMini, isProcessing }
-      }),
-
-    move: baseProcedure
-      .input(z.object({
-        gameId: z.string(),
-        move: z.record(z.string(), z.any()).transform(p => p as MoveEvent),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        logger.info({ gameId: input.gameId }, 'move')
-        const db = useDrizzle()
-
-        const [total] = await db.select({ count: sql<number>`COALESCE(COUNT(*), 0)` })
-          .from(TMoves)
-          .where(eq(TMoves.gameId, input.gameId))
-
-        if (!total) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-        logger.info({ total }, 'total moves')
-
-        const [userMove] = await db
-          .insert(TMoves)
-          .values({
-            moveUser: input.move,
-            gameId: input.gameId,
-            moveGpt4oFen: input.move.after,
-            moveGpt4oMiniFen: input.move.after,
-            index: total.count,
-          })
-          .returning()
-
-        if (!userMove) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-
-        setImmediate(async () => {
-          logger.info('move gpt-4o-mini')
+        .refine((p) => {
           try {
-            const fen = await play('gpt-4o-mini', input.move)
-            logger.info({ fen }, 'gpt-4o-mini fen')
-
-            const db = useDrizzle()
-            await db.update(TMoves)
-              .set({ moveGpt4oMiniFen: fen })
-              .where(eq(TMoves.id, userMove.id))
+            new Chess(p.fen) // validate fen
+            return true
+            // by deafult we return an empty list when no move is provided this
+            // makes logic a lot simpler in the UI as we don't have to check if
+            // the move is undefined and other shenanigans
+            // if (!p.move) return true
+            // return game.moves().includes(p.move) // validate move
           }
           catch (error) {
             logger.error(error)
+            return false
           }
-        })
+        }),
+    )
+    .query(async ({ input }) => {
+      logger.info({ input }, 'run')
 
-        setImmediate(async () => {
-          logger.info('move gpt-4o')
-          try {
-            const fen = await play('gpt-4o', input.move)
-            logger.info({ fen }, 'gpt-4o fen')
+      const [fenGpt4o, fenGpt4oMini] = await Promise.all([
+        play('gpt-4o', input as PlayOptions),
+        play('gpt-4o-mini', input as PlayOptions),
+      ])
 
-            const db = useDrizzle()
-            await db.update(TMoves)
-              .set({ moveGpt4oFen: fen })
-              .where(eq(TMoves.id, userMove.id))
-          }
-          catch (error) {
-            logger.error(error)
-          }
-        })
-
-        return {
-          fenGpt4o: userMove.moveGpt4oFen,
-          fenGpt4oMini: userMove.moveGpt4oMiniFen,
-        }
-      }),
-  }),
+      return { fenGpt4o, fenGpt4oMini }
+    }),
 })
 
 export type AppRouter = typeof appRouter

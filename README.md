@@ -1,75 +1,29 @@
 # Nuxt Minimal Starter
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
 
-## Setup
+## Query params
 
-Make sure to install dependencies:
+The whole state of the app is defined by the query params. They currently are:
 
-```bash
-# npm
-npm install
+- `fen` (optional) - the FEN string of the board. Defaults to
+  `rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`
+- `orientation` (optional) - the orientation of the board (`white` or `black`).
+  Defaults to `white`
+- `move` (optional) - the move made by the user. So we can present the board
+  with the AI results for the move.
 
-# pnpm
-pnpm install
+Examples:
 
-# yarn
-yarn install
+- `?fen=rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`
+- `?fen=rnbqkb1r/pppppppp/5n2/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 1 2&move=Nf3`
+- `?fen=rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1&orientation=black`
+- `?fen=rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1&move=e4&orientation=white`
+- `?fen=r1bqkbnr/pppp1ppp/2n5/4p3/8/5NP1/PPPPPPBP/RNBQK2R b KQkq - 4 4&move=h6&orientation=black`
+- `?move=d4`
+- `?move=e4&orientation=black`
 
-# bun
-bun install
-```
+### How it works
 
-## Development Server
-
-Start the development server on `http://localhost:3000`:
-
-```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+If the `move` query param is present, we present the board with the AI results
+for the move. This way, users can share URLs with their moves for a given FEN
+and see the AI results for the move.

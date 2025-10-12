@@ -16,21 +16,13 @@ export const TGames = sqliteTable('games', {
     .$onUpdateFn(() => sql`CURRENT_TIMESTAMP`),
 })
 
-export const TMoves = sqliteTable('moves', {
+export const TBoards = sqliteTable('boards', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   gameId: text('game_id')
     .notNull()
     .references(() => TGames.id, { onDelete: 'cascade' }),
-
-  index: integer('index')
-    .notNull(),
-
-  moveUser: text('move_user', { mode: 'json' })
-    .$type<MoveEvent>(),
-  moveGpt4oMiniFen: text('move_gpt_4o_mini_fen'),
-  moveGpt4oFen: text('move_gpt_4o_fen'),
 
   createdAt: text('created_at')
     .notNull()
@@ -42,17 +34,17 @@ export const TMoves = sqliteTable('moves', {
 })
 
 export const RGames = relations(TGames, ({ many }) => ({
-  moves: many(TMoves),
+  moves: many(TBoards),
 }))
 
-export const RMoves = relations(TMoves, ({ one }) => ({
+export const RMoves = relations(TBoards, ({ one }) => ({
   game: one(TGames, {
-    fields: [TMoves.gameId],
+    fields: [TBoards.gameId],
     references: [TGames.id],
   }),
 }))
 
 export type Game = typeof TGames.$inferSelect
 export type GameInsert = typeof TGames.$inferInsert
-export type Move = typeof TMoves.$inferSelect
-export type MoveInsert = typeof TMoves.$inferInsert
+export type Move = typeof TBoards.$inferSelect
+export type MoveInsert = typeof TBoards.$inferInsert

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { MoveEvent } from 'vue3-chessboard'
 
+const props = defineProps<{ fen: string }>()
+
 const { $trpc } = useNuxtApp()
 
-const fen = ref('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
-
 const games = reactive({
-  fenGpt4o: fen.value,
-  fenGpt4oMini: fen.value,
+  fenGpt4o: props.fen,
+  fenGpt4oMini: props.fen,
 })
 
 const onMove = async (move: MoveEvent) => {
@@ -34,7 +34,7 @@ const onMove = async (move: MoveEvent) => {
 
         <GameBoard
           v-model="games.fenGpt4o"
-          @move="async (e) => await onMove(e)"
+          @move="onMove"
         />
       </UCard>
 
@@ -50,7 +50,7 @@ const onMove = async (move: MoveEvent) => {
 
         <GameBoard
           v-model="games.fenGpt4oMini"
-          @move="async (e) => await onMove(e)"
+          @move="onMove"
         />
       </UCard>
     </div>
