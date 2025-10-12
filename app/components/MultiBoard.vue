@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { TheChessboard, type BoardApi, type BoardConfig, type MoveEvent } from 'vue3-chessboard'
 import 'vue3-chessboard/style.css'
-import { useStockfish } from './engine'
-
-const { setPosition: setPositionGpt4o, onBestMove: onBestMoveGpt4o } = useStockfish()
-const { setPosition: setPositionGpt4oMini, onBestMove: onBestMoveGpt4oMini } = useStockfish()
 
 let boardGpt4o: BoardApi | undefined = undefined
 let boardGpt4oMini: BoardApi | undefined = undefined
@@ -38,23 +34,10 @@ watch(() => props.fenGpt4o, p => configGpt4o.fen = p)
 watch(() => props.fenGpt4oMini, p => configGpt4oMini.fen = p)
 watch(() => props.fenGpt4o, p => p && boardGpt4o?.setPosition(p))
 watch(() => props.fenGpt4oMini, p => p && boardGpt4oMini?.setPosition(p))
-watch(() => props.fenGpt4o, p => p && setPositionGpt4o(p))
-watch(() => props.fenGpt4oMini, p => p && setPositionGpt4oMini(p))
 
 const emit = defineEmits<{ (e: 'move', data: MoveEvent): Promise<void> }>()
 
-onBestMoveGpt4o((src, dst) => {
-  console.log('onBestMoveGpt4o', src, dst)
-  boardGpt4o?.drawMove(src, dst, 'paleBlue')
-})
-onBestMoveGpt4oMini((src, dst) => {
-  console.log('onBestMoveGpt4oMini', src, dst)
-  boardGpt4oMini?.drawMove(src, dst, 'paleBlue')
-})
-
 const onMove = async (e: MoveEvent) => {
-  setPositionGpt4o(e.after)
-  setPositionGpt4oMini(e.after)
   boardGpt4o?.setPosition(e.after)
   boardGpt4oMini?.setPosition(e.after)
   await emit('move', e)

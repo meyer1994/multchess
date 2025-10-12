@@ -1,36 +1,46 @@
-import { useEventBus, type EventBusKey } from '@vueuse/core'
 import type { SquareKey } from 'vue3-chessboard'
 
 const ARRAY = Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00)
 const hasWasm = typeof WebAssembly === 'object' && WebAssembly.validate(ARRAY)
 
-export const useStockfish = () => {
+export const useStockfish = (fen: Ref<string>) => {
   const { post, data } = useWebWorker(hasWasm ? '/stockfish.wasm.js' : '/stockfish.js')
 
-  const setPosition = (fen: string) => {
+  watch(fen, (newValue, oldValue) => {
+    if (newValue === oldValue) return
     post('uci')
     post('ucinewgame')
-    post('position fen ' + fen)
+    post(`position fen ${fen.value}`)
     post('go depth 10')
-  }
-
-  const key: EventBusKey<{ src: SquareKey, dst: SquareKey }> = Symbol('stockfish')
-  const bus = useEventBus(key)
-
-  type Function = (src: SquareKey, dst: SquareKey) => Promise<void> | void
-  const onBestMove = (cb: Function) => bus.on((e) => {
-    cb(e.src, e.dst)
   })
 
-  watch(data, (data) => {
+  const depth = ref<number>(0)
+  const score = ref<number>(-1)
+  const bestMove = ref<{ src: SquareKey, dst: SquareKey } | undefined>(undefined)
+
+  watch(data, (data: string) => {
     if (!data) return
-    const uci = (data as string).split(' ')
-    if (uci[0] === 'bestmove' && uci[1]) {
-      const orig = uci[1].slice(0, 2) as SquareKey
-      const dest = uci[1].slice(2, 4) as SquareKey
-      bus.emit({ src: orig, dst: dest })
+
+    if (data.startsWith('bestmove')) {
+      const [, move] = data.split(' ')
+      if (!move) return
+      const orig = move.slice(0, 2) as SquareKey
+      const dest = move.slice(2, 4) as SquareKey
+      bestMove.value = { src: orig, dst: dest }
+    }
+
+    if (data.startsWith('info')) {
+      const value = data.split(' ')[9]
+      if (!value) return
+      score.value = Number(value)
+    }
+
+    if (data.startsWith('info')) {
+      const value = data.split(' ')[2]
+      if (!value) return
+      depth.value = Number(value)
     }
   })
 
-  return { setPosition, onBestMove }
+  return { score, bestMove, depth }
 }

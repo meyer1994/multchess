@@ -1,4 +1,5 @@
 import { createTRPCNuxtClient, httpBatchLink } from 'trpc-nuxt/client'
+import { loggerLink } from '@trpc/client'
 import type { AppRouter } from '~~/server/trpc/index'
 
 export default defineNuxtPlugin(() => {
@@ -7,7 +8,10 @@ export default defineNuxtPlugin(() => {
    * built on top of Nuxt's `useLazyAsyncData`.
    */
   const trpc = createTRPCNuxtClient<AppRouter>({
-    links: [httpBatchLink({ url: '/api/trpc' })],
+    links: [
+      loggerLink(),
+      httpBatchLink({ url: '/api/trpc' }),
+    ],
   })
 
   return { provide: { trpc } }
