@@ -1,7 +1,6 @@
+import { ChatPromptTemplate } from '@langchain/core/prompts'
 import { Chess } from 'chess.js'
-import OpenAI from 'openai'
-import { zodResponseFormat } from 'openai/helpers/zod.mjs'
-import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions.mjs'
+import { ChatOpenAI } from '@langchain/openai'
 import pRetry from 'p-retry'
 import { z } from 'zod'
 
@@ -13,81 +12,66 @@ type PlayOptions = {
   orientation: 'white' | 'black'
 }
 
-const play = async (model: string, opts: PlayOptions) => {
+type Model
+  = | 'gpt-4o'
+    | 'gpt-4o-mini'
+
+const play = async (model: Model, opts: PlayOptions) => {
   logger.info({ opts }, 'play')
-  const openai = new OpenAI()
 
   const game = new Chess(opts.fen)
-
-  const messages: ChatCompletionMessageParam[] = [
-    {
-      role: 'system',
-      content: `
-        You are a chess player.
-
-        You will receive the following board state:
-        - Fen: fen string of the board state
-        - Moves: list of possible moves
-        - Orientation: your side (white or black)
-
-        You need to return the best move for the given board state.
-
-        Output:
-        - Move: the move to make (in SAN notation)
-        - JSON format
-
-        Example:
-        {"move": "e4"}
-      `,
-    },
-    {
-      role: 'user',
-      content: `
-        Fen: ${opts.fen}
-        Your side: black
-        Possible moves: ${game.moves().join(', ')}
-      `,
-    },
-  ]
+  const valid = game.moves()
 
   const schema = z.object({
     move: z
-      .string()
-      .describe(`One of ${game.moves().join(', ')}`),
+      .enum(valid as [string, ...string[]])
+      .describe(`One of ${valid.join(', ')}`),
   })
 
-  const doFetch = async () => await openai.chat.completions.parse({
-    model,
-    messages,
-    response_format: zodResponseFormat(schema, 'move'),
-  })
+  const PROMPT_SYSTEM = `
+    You are a chess player.
 
-  // we try 3 times to get a valid move
-  for (let i = 0; i < 3; i++) {
-    // rety api calls
-    const response = await pRetry(doFetch, { retries: 3 })
+    You will receive the following board state:
+    - Fen: fen string of the board state
+    - Moves: list of possible moves
+    - Orientation: your side (white or black)
 
-    // skip if no message
-    const message = response.choices[0]?.message
-    if (!message) continue
+    You need to return the best move for the given board state.
 
-    // skip if no parsed
-    const parsed = message.parsed
-    if (!parsed) continue
+    Output:
+    - Move: the move to make (in SAN notation)
+    - JSON format
 
-    messages.push(message)
+    Example:
+    {{"move": "e4"}}
+  `
 
-    try {
-      game.move(parsed.move)
-      return game.fen()
-    }
-    catch (error) {
-      logger.error(error)
-      messages.push({ role: 'user', content: String(error) })
-    }
+  const PROMPT_USER = `
+    Fen: {fen}
+    Your side: black
+    Possible moves: {moves}
+  `
+
+  const prompt = ChatPromptTemplate.fromMessages([
+    ['system', PROMPT_SYSTEM],
+    ['human', PROMPT_USER],
+  ])
+
+  const llm = new ChatOpenAI({ model })
+  const llms = llm.withStructuredOutput(schema)
+
+  const call = async () => {
+    const input = { fen: opts.fen, moves: valid.join(', ') }
+    const messages = await prompt.invoke(input)
+    return await llms.invoke(messages)
   }
 
-  throw new Error('Failed to parse OpenAI response')
+  // retry api calls
+  const parsed = await pRetry(call, { retries: 3 })
+  if (!parsed?.move) throw new Error('Failed to get valid move from LangChain')
+
+  game.move(parsed.move)
+  return game.fen()
 }
 
 export const appRouter = createTRPCRouter({
@@ -122,9 +106,20 @@ export const appRouter = createTRPCRouter({
     .query(async ({ input }) => {
       logger.info({ input }, 'run')
 
+      const call = (model: Model) => {
+        try {
+          return play(model, input as PlayOptions)
+        }
+        catch (e) {
+          logger.error(e)
+          throw e
+        }
+      }
+
       const [fenGpt4o, fenGpt4oMini] = await Promise.all([
-        play('gpt-4o', input as PlayOptions),
-        play('gpt-4o-mini', input as PlayOptions),
+        call('gpt-4o'),
+        call('gpt-4o-mini'),
+        // play('openai:gpt-3.5', input as PlayOptions),
       ])
 
       return { fenGpt4o, fenGpt4oMini }

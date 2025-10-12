@@ -3,5 +3,7 @@ onlyBuiltDependencies:
   - '@tailwindcss/oxide'
   - es5-ext
   - esbuild
+  - sharp
   - unrs-resolver
   - vue-demi
+  - workerd

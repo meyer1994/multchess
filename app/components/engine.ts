@@ -1,9 +1,9 @@
 import type { SquareKey } from 'vue3-chessboard'
 
-const ARRAY = Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00)
-const hasWasm = typeof WebAssembly === 'object' && WebAssembly.validate(ARRAY)
-
 export const useStockfish = (fen: string) => {
+  const ARRAY = Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00)
+  const hasWasm = typeof WebAssembly === 'object' && WebAssembly.validate(ARRAY)
+
   const { post, data } = useWebWorker(hasWasm ? '/stockfish.wasm.js' : '/stockfish.js')
 
   const depth = ref<number>(0)

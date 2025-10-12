@@ -1,21 +1,22 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  modules: ['@nuxt/eslint', '@vueuse/nuxt', '@nuxt/ui'],
+  modules: ['@nuxt/eslint', '@vueuse/nuxt', '@nuxt/ui', 'nitro-cloudflare-dev'],
 
   devtools: { enabled: true },
 
   css: ['~/assets/css/main.css'],
-
-  runtimeConfig: {
-    databaseUrl: process.env.DATABASE_URL as string | undefined,
-  },
 
   build: { transpile: ['trpc-nuxt'] },
 
   compatibilityDate: '2025-07-15',
 
   nitro: {
-    experimental: { database: true },
+    preset: 'cloudflare_module',
+
+    cloudflare: {
+      deployConfig: true,
+      nodeCompat: true,
+    },
   },
 
   typescript: { typeCheck: true, strict: true },
