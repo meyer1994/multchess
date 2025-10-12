@@ -6,7 +6,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "multchess",
   "main": "./.output/server/index.mjs",
-  "compatibility_date": "2025-10-04",
+  "compatibility_date": "2025-10-12",
   "observability": {
     "enabled": true
   },

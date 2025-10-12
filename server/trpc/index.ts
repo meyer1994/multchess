@@ -1,10 +1,7 @@
 import { ChatPromptTemplate } from '@langchain/core/prompts'
 import { Chess } from 'chess.js'
 import { ChatOpenAI } from '@langchain/openai'
-import pRetry from 'p-retry'
 import { z } from 'zod'
-
-const logger = usePino()
 
 type PlayOptions = {
   fen: string
@@ -17,7 +14,7 @@ type Model
     | 'gpt-4o-mini'
 
 const play = async (model: Model, opts: PlayOptions) => {
-  logger.info({ opts }, 'play')
+  console.info({ opts }, 'play')
 
   const game = new Chess(opts.fen)
   const valid = game.moves()
@@ -67,7 +64,7 @@ const play = async (model: Model, opts: PlayOptions) => {
   }
 
   // retry api calls
-  const parsed = await pRetry(call, { retries: 3 })
+  const parsed = await call()
   if (!parsed?.move) throw new Error('Failed to get valid move from LangChain')
 
   game.move(parsed.move)
@@ -98,20 +95,20 @@ export const appRouter = createTRPCRouter({
             // return game.moves().includes(p.move) // validate move
           }
           catch (error) {
-            logger.error(error)
+            console.error(error)
             return false
           }
         }),
     )
     .query(async ({ input }) => {
-      logger.info({ input }, 'run')
+      console.info({ input }, 'run')
 
       const call = (model: Model) => {
         try {
           return play(model, input as PlayOptions)
         }
         catch (e) {
-          logger.error(e)
+          console.error(e)
           throw e
         }
       }

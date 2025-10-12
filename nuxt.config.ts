@@ -2,13 +2,18 @@
 export default defineNuxtConfig({
   modules: ['@nuxt/eslint', '@vueuse/nuxt', '@nuxt/ui', 'nitro-cloudflare-dev'],
 
-  devtools: { enabled: true },
+  devtools: {
+    enabled: true,
+    timeline: {
+      enabled: true,
+    },
+  },
 
   css: ['~/assets/css/main.css'],
 
   build: { transpile: ['trpc-nuxt'] },
 
-  compatibilityDate: '2025-07-15',
+  compatibilityDate: '2025-10-12',
 
   nitro: {
     preset: 'cloudflare_module',
@@ -19,6 +24,13 @@ export default defineNuxtConfig({
     },
   },
 
-  typescript: { typeCheck: true, strict: true },
-  eslint: { config: { stylistic: true } },
+  typescript: {
+    typeCheck: true,
+    strict: true,
+  },
+
+  eslint: {
+    // checker: true,
+    config: { stylistic: true },
+  },
 })
