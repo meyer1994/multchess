@@ -12,6 +12,9 @@ type PlayOptions = {
 type Model
   = | 'gpt-4o'
     | 'gpt-4o-mini'
+    | 'gpt-4.1'
+    | 'gpt-4.1-mini'
+    | 'gpt-4-turbo'
 
 const play = async (model: Model, opts: PlayOptions) => {
   console.info({ opts }, 'play')
@@ -113,13 +116,21 @@ export const appRouter = createTRPCRouter({
         }
       }
 
-      const [fenGpt4o, fenGpt4oMini] = await Promise.all([
+      const [
+        fenGpt4o,
+        fenGpt4oMini,
+        fenGpt41,
+        fenGpt41Mini,
+        fenGpt4Turbo,
+      ] = await Promise.all([
         call('gpt-4o'),
         call('gpt-4o-mini'),
-        // play('openai:gpt-3.5', input as PlayOptions),
+        call('gpt-4.1'),
+        call('gpt-4.1-mini'),
+        call('gpt-4-turbo'),
       ])
 
-      return { fenGpt4o, fenGpt4oMini }
+      return { fenGpt4o, fenGpt4oMini, fenGpt41, fenGpt41Mini, fenGpt4Turbo }
     }),
 })
 
