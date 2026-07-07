@@ -1,6 +1,8 @@
 import { ChatPromptTemplate } from '@langchain/core/prompts'
 import { Chess } from 'chess.js'
 import { ChatOpenAI } from '@langchain/openai'
+import { createDatabase } from 'db0'
+import cloudflareD1 from 'db0/connectors/cloudflare-d1'
 import { z } from 'zod'
 
 type PlayOptions = {
@@ -15,6 +17,8 @@ type Model
     | 'gpt-4.1'
     | 'gpt-4.1-mini'
     | 'gpt-4-turbo'
+
+const db = createDatabase(cloudflareD1({ bindingName: 'DB' }))
 
 const play = async (model: Model, opts: PlayOptions) => {
   console.info({ opts }, 'play')
