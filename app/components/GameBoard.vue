@@ -13,7 +13,7 @@ const model = defineModel<string>({ required: true })
 let board: BoardApi | undefined
 const onCreated = (e: BoardApi) => board = e
 
-const { best, setFen } = useStockfish(model.value)
+const { best, setFen, depth, score } = useStockfish(model.value)
 
 // add reactivity to the board
 watch(model, p => setFen(p))

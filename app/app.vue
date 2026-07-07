@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MoveEvent } from 'vue3-chessboard'
+import { TheChessboard } from 'vue3-chessboard'
 
 const { $trpc } = useNuxtApp()
 
@@ -33,33 +34,29 @@ const onMove = async (move: MoveEvent) => {
 <template>
   <UApp>
     <UContainer class="flex flex-col gap-4">
-      <div class="grid grid-cols-2 gap-4">
-        <UCard v-for="board in boards" :key="board.key">
-          <template #header>
-            <div class="flex flex-col gap-2">
-              <p>{{ board.label }}</p>
-              <p class="text-xs text-gray-500">
-                {{ games[board.key] }}
-              </p>
-            </div>
-          </template>
-
-          <GameBoard
+      <div class="grid lg:grid-cols-2 gap-4">
+        <template
+          v-for="board in boards"
+          :key="board.key"
+        >
+          <GameEngine
+            v-slot="{ best, depth, score }"
             v-model="games[board.key]"
-            @move="async (e) => await onMove(e)"
-          />
-        </UCard>
+          >
+            <UCard
+              :title="board.label"
+              :description="games[board.key]"
+              :ui="{ body: 'flex items-center justify-center' }"
+            >
+              <TheChessboard
+                class="!size-full"
+                :board-config="{ orientation: 'white', fen: games[board.key] }"
+                @move="async (e) => await onMove(e)"
+              />
+            </UCard>
+          </GameEngine>
+        </template>
       </div>
     </UContainer>
   </UApp>
 </template>
-
-<style>
-div
-  #__nuxt,
-  #__layout,
-  #__layout > div,
-  #app {
-    min-height: 100vh;
-  }
-</style>
