@@ -9,7 +9,7 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css', 'vue3-chessboard/style.css'],
 
   build: { transpile: ['trpc-nuxt'] },
 
@@ -29,8 +29,8 @@ export default defineNuxtConfig({
       include: [
         '@trpc/client',
         'vue3-chessboard',
-      ]
-    }
+      ],
+    },
   },
 
   typescript: {
