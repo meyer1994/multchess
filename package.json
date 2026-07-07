@@ -23,6 +23,7 @@
     "@trpc/server": "^11.18.0",
     "@vueuse/nuxt": "14.3.0",
     "chess.js": "^1.4.0",
+    "db0": "^0.3.4",
     "langchain": "^1.5.2",
     "memoizee": "^0.4.17",
     "nuxt": "^4.4.8",
