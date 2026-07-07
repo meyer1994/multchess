@@ -3,7 +3,7 @@ export default defineNuxtConfig({
   modules: ['@nuxt/eslint', '@vueuse/nuxt', '@nuxt/ui', 'nitro-cloudflare-dev'],
 
   devtools: {
-    enabled: true,
+    enabled: false,
     timeline: {
       enabled: true,
     },
@@ -22,6 +22,15 @@ export default defineNuxtConfig({
       deployConfig: true,
       nodeCompat: true,
     },
+  },
+
+  vite: {
+    optimizeDeps: {
+      include: [
+        '@trpc/client',
+        'vue3-chessboard',
+      ]
+    }
   },
 
   typescript: {
