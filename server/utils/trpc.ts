@@ -22,10 +22,15 @@ const t = initTRPC.context<Context>().create({
 // Base router and procedure helpers
 export const createTRPCRouter = t.router
 export const createCallerFactory = t.createCallerFactory
+type TRPCRateLimiter = {
+  limit: (options: { key: string }) => Promise<{ success: boolean }>
+}
+
 export const baseProcedure = t.procedure
   .use(async ({ ctx, next }) => {
-    const { success } = await ctx.event.context.cloudflare.env
-      .TRPC_RATE_LIMITER.limit({ key: 'TRPC' })
+    type Env = { TRPC_RATE_LIMITER: TRPCRateLimiter }
+    const { TRPC_RATE_LIMITER: limitter } = ctx.event.context.cloudflare.env as Env
+    const { success } = await limitter.limit({ key: 'TRPC' })
     if (!success) throw new TRPCError({ code: 'TOO_MANY_REQUESTS' })
     return await next()
   })
