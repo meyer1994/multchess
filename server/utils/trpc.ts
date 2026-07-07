@@ -1,4 +1,4 @@
-import { initTRPC } from '@trpc/server'
+import { initTRPC, TRPCError } from '@trpc/server'
 import type { H3Event } from 'h3'
 
 export const createTRPCContext = async (event: H3Event) => {
@@ -23,3 +23,9 @@ const t = initTRPC.context<Context>().create({
 export const createTRPCRouter = t.router
 export const createCallerFactory = t.createCallerFactory
 export const baseProcedure = t.procedure
+  .use(async ({ ctx, next }) => {
+    const { success } = await ctx.event.context.cloudflare.env
+      .TRPC_RATE_LIMITER.limit({ key: 'TRPC' })
+    if (!success) throw new TRPCError({ code: 'TOO_MANY_REQUESTS' })
+    return await next()
+  })

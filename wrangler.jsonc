@@ -29,6 +29,16 @@
   //     "migrations_dir": "./server/db/migrations"
   //   }
   // ],
+  "ratelimits": [
+    {
+      "name": "TRPC_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 15,
+        "period": 10
+      }
+    }
+  ],
   /**
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables

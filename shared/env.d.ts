@@ -1,4 +1,4 @@
-/// <reference types="./wrangler.d.ts" />
+import './wrangler.d.ts'
 
 declare module 'h3' {
   interface H3EventContext {
