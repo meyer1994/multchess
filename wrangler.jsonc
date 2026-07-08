@@ -56,13 +56,6 @@
 		"directory": "./.output/public/",
 		"binding": "ASSETS"
 	},
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "multchess",
-			"database_id": "5851242e-1038-4cfd-a62b-0e2a603d1928"
-		}
-	]
 	/**
 	 * Service Bindings (communicate between multiple Workers)
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
