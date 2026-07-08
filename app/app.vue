@@ -1,119 +1,166 @@
 <script setup lang="ts">
 import type { MoveEvent, BoardApi } from 'vue3-chessboard'
 import { TheChessboard } from 'vue3-chessboard'
-import { useStockfish } from './components/engine'
 
 const { $trpc } = useNuxtApp()
 
 const FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
 type Models
-  = | 'fenGpt4o'
-    | 'fenGpt4oMini'
-    | 'fenGpt41'
-    | 'fenGpt41Mini'
-    | 'fenGpt4Turbo'
+  = | 'gpt-3.5-turbo'
+    | 'gpt-4o-mini'
+    | 'gpt-4.1-nano'
+    | 'gpt-4.1-mini'
+    | 'o3-mini'
+    | 'gpt-5-mini'
+    | 'gpt-5-nano'
 
 // fen positions for each game (updated by the onMove event)
 const fens = reactive<Record<Models, string>>({
-  fenGpt4o: FEN,
-  fenGpt4oMini: FEN,
-  fenGpt41: FEN,
-  fenGpt41Mini: FEN,
-  fenGpt4Turbo: FEN,
+  'gpt-3.5-turbo': FEN,
+  'gpt-4o-mini': FEN,
+  'gpt-4.1-nano': FEN,
+  'gpt-4.1-mini': FEN,
+  'o3-mini': FEN,
+  'gpt-5-mini': FEN,
+  'gpt-5-nano': FEN,
 })
 
 // stockfish engines for each game
 const stockfish = reactive<Record<Models, ReturnType<typeof useStockfish>>>({
-  fenGpt4o: useStockfish(FEN),
-  fenGpt4oMini: useStockfish(FEN),
-  fenGpt41: useStockfish(FEN),
-  fenGpt41Mini: useStockfish(FEN),
-  fenGpt4Turbo: useStockfish(FEN),
+  'gpt-3.5-turbo': useStockfish(FEN),
+  'gpt-4o-mini': useStockfish(FEN),
+  'gpt-4.1-nano': useStockfish(FEN),
+  'gpt-4.1-mini': useStockfish(FEN),
+  'o3-mini': useStockfish(FEN),
+  'gpt-5-nano': useStockfish(FEN),
+  'gpt-5-mini': useStockfish(FEN),
 })
 
 // those are populated by the @board-created event on each game
 const boards = reactive<Record<Models, BoardApi | undefined>>({
-  fenGpt4o: undefined as BoardApi | undefined,
-  fenGpt4oMini: undefined as BoardApi | undefined,
-  fenGpt41: undefined as BoardApi | undefined,
-  fenGpt41Mini: undefined as BoardApi | undefined,
-  fenGpt4Turbo: undefined as BoardApi | undefined,
+  'gpt-3.5-turbo': undefined as BoardApi | undefined,
+  'gpt-4o-mini': undefined as BoardApi | undefined,
+  'gpt-4.1-nano': undefined as BoardApi | undefined,
+  'gpt-4.1-mini': undefined as BoardApi | undefined,
+  'o3-mini': undefined as BoardApi | undefined,
+  'gpt-5-nano': undefined as BoardApi | undefined,
+  'gpt-5-mini': undefined as BoardApi | undefined,
+})
+
+const isLoading = reactive<Record<Models, boolean>>({
+  'gpt-3.5-turbo': false,
+  'gpt-4o-mini': false,
+  'gpt-4.1-nano': false,
+  'gpt-4.1-mini': false,
+  'o3-mini': false,
+  'gpt-5-nano': false,
+  'gpt-5-mini': false,
 })
 
 // draw the best move from stockfish to the board
-watch(() => stockfish.fenGpt4o.best,
-  p => p && boards.fenGpt4o?.drawMove(p.src, p.dst, 'paleGrey'))
-watch(() => stockfish.fenGpt4oMini.best,
-  p => p && boards.fenGpt4oMini?.drawMove(p.src, p.dst, 'paleGrey'))
-watch(() => stockfish.fenGpt41.best,
-  p => p && boards.fenGpt41?.drawMove(p.src, p.dst, 'paleGrey'))
-watch(() => stockfish.fenGpt41Mini.best,
-  p => p && boards.fenGpt41Mini?.drawMove(p.src, p.dst, 'paleGrey'))
-watch(() => stockfish.fenGpt4Turbo.best,
-  p => p && boards.fenGpt4Turbo?.drawMove(p.src, p.dst, 'paleGrey'))
+watch(() => stockfish['gpt-3.5-turbo'].best,
+  p => p && boards['gpt-3.5-turbo']?.drawMove(p.src, p.dst, 'paleGrey'))
+watch(() => stockfish['gpt-4o-mini'].best,
+  p => p && boards['gpt-4o-mini']?.drawMove(p.src, p.dst, 'paleGrey'))
+watch(() => stockfish['gpt-4.1-nano'].best,
+  p => p && boards['gpt-4.1-nano']?.drawMove(p.src, p.dst, 'paleGrey'))
+watch(() => stockfish['gpt-4.1-mini'].best,
+  p => p && boards['gpt-4.1-mini']?.drawMove(p.src, p.dst, 'paleGrey'))
+watch(() => stockfish['o3-mini'].best,
+  p => p && boards['o3-mini']?.drawMove(p.src, p.dst, 'paleGrey'))
+watch(() => stockfish['gpt-5-nano'].best,
+  p => p && boards['gpt-5-nano']?.drawMove(p.src, p.dst, 'paleGrey'))
+watch(() => stockfish['gpt-5-mini'].best,
+  p => p && boards['gpt-5-mini']?.drawMove(p.src, p.dst, 'paleGrey'))
 
 // move the board to the new position
-watch(() => fens.fenGpt4o,
-  p => boards.fenGpt4o?.setPosition(p))
-watch(() => fens.fenGpt4oMini,
-  p => boards.fenGpt4oMini?.setPosition(p))
-watch(() => fens.fenGpt41,
-  p => boards.fenGpt41?.setPosition(p))
-watch(() => fens.fenGpt41Mini,
-  p => boards.fenGpt41Mini?.setPosition(p))
-watch(() => fens.fenGpt4Turbo, p => boards.fenGpt4Turbo?.setPosition(p))
+watch(() => fens['gpt-3.5-turbo'],
+  p => boards['gpt-3.5-turbo']?.setPosition(p))
+watch(() => fens['gpt-4o-mini'],
+  p => boards['gpt-4o-mini']?.setPosition(p))
+watch(() => fens['gpt-4.1-nano'],
+  p => boards['gpt-4.1-nano']?.setPosition(p))
+watch(() => fens['gpt-4.1-mini'],
+  p => boards['gpt-4.1-mini']?.setPosition(p))
+watch(() => fens['o3-mini'],
+  p => boards['o3-mini']?.setPosition(p))
+watch(() => fens['gpt-5-nano'],
+  p => boards['gpt-5-nano']?.setPosition(p))
+watch(() => fens['gpt-5-mini'],
+  p => boards['gpt-5-mini']?.setPosition(p))
 
 // for template loop
 const games: { key: Models, label: string }[] = [
-  { key: 'fenGpt4o', label: 'GPT-4o' },
-  { key: 'fenGpt4oMini', label: 'GPT-4o Mini' },
-  { key: 'fenGpt41', label: 'GPT-4.1' },
-  { key: 'fenGpt41Mini', label: 'GPT-4.1 Mini' },
-  { key: 'fenGpt4Turbo', label: 'GPT-4 Turbo' },
+  { key: 'gpt-3.5-turbo', label: 'GPT-3.5' },
+  { key: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+  { key: 'gpt-4.1-nano', label: 'GPT-4.1 Nano' },
+  { key: 'gpt-4.1-mini', label: 'GPT-4.1 Mini' },
+  { key: 'o3-mini', label: 'O3 Mini' },
+  { key: 'gpt-5-mini', label: 'GPT-5 mini' },
+  { key: 'gpt-5-nano', label: 'GPT-5 nano' },
 ]
 
-const onMove = async (move: MoveEvent) => {
-  const data = await $trpc.run.query({ fen: move.after })
-  Object.assign(fens, data)
+const onMove = async (model: Models, move: MoveEvent) => {
+  await Promise.all(Object.keys(fens).map(async (m) => {
+    isLoading[m as Models] = true
+    const data = await $trpc.run.query({ fen: move.after, model: m as Models })
+    isLoading[m as Models] = false
+    Object.assign(fens, data)
+  }))
 }
 </script>
 
 <template>
   <UApp>
-    <UContainer class="flex flex-col gap-4 p-4">
-      <div class="grid lg:grid-cols-2 gap-4">
-        <template
-          v-for="game in games"
-          :key="game.key"
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+      <template
+        v-for="game in games"
+        :key="game.key"
+      >
+        <UCard
+          :ui="{
+            body: 'flex items-center justify-center',
+            header: 'flex flex-col',
+          }"
         >
-          <UCard
-            :ui="{
-              body: 'flex items-center justify-center',
-              header: 'flex flex-col',
-            }"
-          >
-            <template #header>
-              <h2 class="text-lg font-bold font-mono">
-                {{ game.label }}
-              </h2>
-              <p class="text-xs text-gray-500 font-mono">
-                fen: {{ fens[game.key] }}
-              </p>
-              <p class="text-xs text-gray-500 font-mono">
-                s: {{ stockfish[game.key].score }} b: {{ stockfish[game.key].best }}
-              </p>
-            </template>
+          <template #header>
+            <h2 class="flex items-center justify-between gap-2 text-lg font-bold font-mono">
+              {{ game.label }}
+              <UBadge
+                :color="
+                  stockfish[game.key].score > 100 ? 'primary'
+                  : stockfish[game.key].score > 20 ? 'secondary'
+                    : stockfish[game.key].score > 0 ? 'neutral'
+                      : stockfish[game.key].score < -100 ? 'error'
+                        : stockfish[game.key].score < -20 ? 'warning'
+                          : 'neutral'
+                "
+                :label="`score: ${stockfish[game.key].score / 100}`"
+              />
+            </h2>
+            <p class="text-xs text-gray-500 font-mono">
+              fen: {{ fens[game.key] }}
+            </p>
+            <p class="text-xs text-gray-500 font-mono">
+              best: {{ stockfish[game.key].best }}
+            </p>
+          </template>
 
-            <TheChessboard
-              class="!size-full"
-              :board-config="{ orientation: 'white', fen: fens[game.key] }"
-              @board-created="e => boards[game.key] = e"
-              @move="async (e) => await onMove(e)"
-            />
-          </UCard>
-        </template>
-      </div>
-    </UContainer>
+          <TheChessboard
+            class="!size-full transition-all"
+            :class="[
+              { 'opacity-40': isLoading[game.key] },
+              { 'animate-pulse': isLoading[game.key] },
+              { '![animation-duration:0.7s]': isLoading[game.key] },
+
+            ]"
+            :board-config="{ orientation: 'white', fen: fens[game.key] }"
+            @board-created="e => boards[game.key] = e"
+            @move="async (e) => await onMove(game.key, e)"
+          />
+        </UCard>
+      </template>
+    </div>
   </UApp>
 </template>

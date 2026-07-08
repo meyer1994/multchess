@@ -1,24 +1,20 @@
 import { ChatPromptTemplate } from '@langchain/core/prompts'
-import { Chess } from 'chess.js'
 import { ChatOpenAI } from '@langchain/openai'
-import { createDatabase } from 'db0'
-import cloudflareD1 from 'db0/connectors/cloudflare-d1'
+import { Chess } from 'chess.js'
 import { z } from 'zod'
 
 type PlayOptions = {
   fen: string
-  move: string
-  orientation: 'white' | 'black'
 }
 
 type Model
-  = | 'gpt-4o'
+  = | 'gpt-3.5-turbo'
     | 'gpt-4o-mini'
-    | 'gpt-4.1'
+    | 'gpt-4.1-nano'
     | 'gpt-4.1-mini'
-    | 'gpt-4-turbo'
-
-const db = createDatabase(cloudflareD1({ bindingName: 'DB' }))
+    | 'o3-mini'
+    | 'gpt-5-mini'
+    | 'gpt-5-nano'
 
 const play = async (model: Model, opts: PlayOptions) => {
   console.info({ opts }, 'play')
@@ -88,6 +84,15 @@ export const appRouter = createTRPCRouter({
       z
         .object({
           fen: z.string(),
+          model: z.enum([
+            'gpt-3.5-turbo',
+            'gpt-4o-mini',
+            'gpt-4.1-nano',
+            'gpt-4.1-mini',
+            'o3-mini',
+            'gpt-5-mini',
+            'gpt-5-nano',
+          ] satisfies Model[]),
           // move: z.string().optional(),
           // orientation: z.enum(['white', 'black']).default('white'),
         })
@@ -110,31 +115,21 @@ export const appRouter = createTRPCRouter({
     .query(async ({ input }) => {
       console.info({ input }, 'run')
 
-      const call = (model: Model) => {
+      const call = async (model: Model) => {
         try {
-          return play(model, input as PlayOptions)
+          console.time(model)
+          return await play(input.model, { fen: input.fen } as PlayOptions)
         }
         catch (e) {
-          console.error(e)
-          throw e
+          console.error(`model ${model} failed`, e)
+          return input.fen
+        }
+        finally {
+          console.timeEnd(model)
         }
       }
 
-      const [
-        fenGpt4o,
-        fenGpt4oMini,
-        fenGpt41,
-        fenGpt41Mini,
-        fenGpt4Turbo,
-      ] = await Promise.all([
-        call('gpt-4o'),
-        call('gpt-4o-mini'),
-        call('gpt-4.1'),
-        call('gpt-4.1-mini'),
-        call('gpt-4-turbo'),
-      ])
-
-      return { fenGpt4o, fenGpt4oMini, fenGpt41, fenGpt41Mini, fenGpt4Turbo }
+      return { [input.model]: await call(input.model) }
     }),
 })
 
