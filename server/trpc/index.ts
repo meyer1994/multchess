@@ -129,7 +129,7 @@ export const appRouter = createTRPCRouter({
         }
       }
 
-      return { [input.model]: await call(input.model) }
+      return { fen: await call(input.model), model: input.model }
     }),
 })
 
