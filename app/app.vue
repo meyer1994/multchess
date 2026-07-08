@@ -1,6 +1,30 @@
 <script setup lang="ts">
 const { $trpc } = useNuxtApp()
 
+useHead({
+  htmlAttrs: { lang: 'en' },
+  meta: [
+    { name: 'robots', content: 'index, follow' },
+    { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+    { name: 'theme-color', content: '#0f172a' },
+    { name: 'twitter:creator', content: '@multchess' },
+  ],
+})
+
+useSeoMeta({
+  title: import.meta.dev ? 'LOCAL Multchess' : 'Multchess',
+  description: 'Compare move suggestions from multiple OpenAI models live in an interactive chess board using Nuxt and TRPC.',
+  ogTitle: 'Multchess - LLM chess analysis in your browser',
+  ogDescription: 'Compare move suggestions from multiple OpenAI models live in an interactive chess board using Nuxt and TRPC.',
+  ogType: 'website',
+  ogSiteName: 'Multchess',
+  ogLocale: 'en_US',
+  twitterCard: 'summary_large_image',
+  twitterTitle: 'Multchess - LLM chess analysis in your browser',
+  twitterDescription: 'Compare move suggestions from multiple OpenAI models live in an interactive chess board using Nuxt and TRPC.',
+  keywords: 'chess, LLM, OpenAI, AI chess, GPT, Nuxt, TRPC, vue',
+})
+
 const FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
 type Models
